@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Listen & Lean 🎀</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:"Trebuchet MS",Arial,sans-serif}
+body{min-height:100vh;background:radial-gradient(circle at 10% 20%,#ffe4f1 0 12%,transparent 25%),radial-gradient(circle at 90% 80%,#dff7ff 0 15%,transparent 30%),linear-gradient(135deg,#fff8fc,#f1fbff);color:#4d4058;display:flex;justify-content:center;align-items:center;padding:20px}
+.game{width:min(1100px,100%);min-height:680px;background:rgba(255,255,255,.92);border:4px solid #f7c9df;border-radius:35px;box-shadow:0 15px 45px rgba(110,80,120,.15);overflow:hidden;position:relative}
+header{padding:18px 30px;display:flex;justify-content:space-between;align-items:center;background:#fff1f8;border-bottom:3px dashed #f4c5dc}
+.logo{font-size:24px;font-weight:bold;color:#c96b9c}.score{background:white;padding:9px 18px;border-radius:30px;border:2px solid #f4c5dc;font-weight:bold}
+.screen{min-height:610px;display:flex;justify-content:center;align-items:center;padding:35px}.intro-card{text-align:center;max-width:700px;animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
+.emoji{font-size:75px;margin-bottom:15px}.round-number{color:#cf79a5;font-size:20px;font-weight:bold;letter-spacing:2px}
+h1{font-size:clamp(38px,6vw,65px);color:#765b86;margin:8px 0 18px}.intro-card p{font-size:20px;line-height:1.6;margin-bottom:28px}
+button{border:none;cursor:pointer;font-weight:bold;transition:.2s}button:hover{transform:translateY(-3px)}
+.ready-btn{background:linear-gradient(135deg,#ed91bd,#c987e8);color:white;font-size:22px;padding:15px 45px;border-radius:40px;box-shadow:0 8px 20px rgba(205,124,178,.3)}
+.game-screen{display:none;padding:25px}.question-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:15px}
+.round-tag{background:#fbe3f0;color:#b75f91;padding:8px 16px;border-radius:20px;font-weight:bold}.question-number{color:#8c7d95;font-weight:bold}
+.main-area{display:grid;grid-template-columns:1fr 1.15fr;gap:25px}
+.camera-card{background:#f8f4ff;border:3px solid #dfd0f2;border-radius:25px;padding:15px;position:relative}.camera-title{text-align:center;font-weight:bold;margin-bottom:10px;color:#816c9b}
+.camera-box{position:relative;width:100%;aspect-ratio:4/3;overflow:hidden;border-radius:18px;background:#d9d9e5}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.lean-guide{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:3px;height:calc(100% - 20px);background:rgba(255,255,255,.6);pointer-events:none}
+.camera-status{text-align:center;padding:9px;margin-top:10px;background:white;border-radius:15px;font-size:14px}.lean-left{color:#8b6ac8}.lean-right{color:#df6b9e}
+.question-card{display:flex;flex-direction:column;justify-content:center}.listen-box{text-align:center;background:#fff8fb;border:3px solid #f6d4e4;border-radius:25px;padding:25px;margin-bottom:20px}
+.listen-box p{font-size:18px;margin-bottom:15px}.listen-btn{background:#a985d5;color:white;padding:14px 30px;border-radius:35px;font-size:20px;box-shadow:0 7px 15px rgba(130,100,170,.25)}.listen-btn.active{background:#e887b5}
+.instruction{text-align:center;font-size:19px;font-weight:bold;margin:15px 0;color:#6d6175}.answers{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.answer{min-height:130px;border-radius:25px;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:23px;font-weight:bold;padding:15px;position:relative}
+.answer small{font-size:15px;margin-top:8px;opacity:.75}.left-answer{background:#e9ddff;border:4px solid #cdb7ef;color:#7256a5}.right-answer{background:#ffe0ec;border:4px solid #f2b7d0;color:#b65780}.arrow{font-size:35px;margin-bottom:5px}
+.countdown{display:none;position:absolute;inset:0;background:rgba(255,255,255,.93);z-index:20;justify-content:center;align-items:center;flex-direction:column;text-align:center}
+.countdown-number{font-size:100px;color:#ce77a6;font-weight:bold;animation:bounce .8s infinite}@keyframes bounce{50%{transform:scale(1.2)}}.countdown p{font-size:24px}
+.feedback{position:absolute;inset:0;z-index:30;display:none;justify-content:center;align-items:center;background:rgba(255,255,255,.94)}.feedback-card{text-align:center;padding:40px}
+.feedback-emoji{font-size:80px}.feedback-card h2{font-size:40px;margin:10px;color:#765b86}.next-btn{margin-top:20px;padding:13px 35px;background:#a985d5;color:white;border-radius:30px;font-size:18px}
+.final{display:none;text-align:center}.final h1{margin-bottom:10px}.final-score{font-size:70px;color:#ce77a6;font-weight:bold;margin:20px}.restart-btn{padding:15px 35px;background:#a985d5;color:white;border-radius:30px;font-size:20px}
+
+.camera-overlay{
+position:absolute;inset:0;background:rgba(255,248,252,.94);
+display:flex;flex-direction:column;justify-content:center;align-items:center;
+text-align:center;padding:20px;z-index:5
+}
+.camera-icon{font-size:52px;margin-bottom:8px}
+.camera-overlay-title{font-size:22px;font-weight:bold;color:#765b86}
+.camera-overlay-text{font-size:14px;margin:8px 0 15px;color:#6d6175}
+.camera-start-btn{
+background:linear-gradient(135deg,#ed91bd,#c987e8);color:white;
+padding:12px 22px;border-radius:30px;font-size:17px
+}
+.camera-overlay.hidden{display:none}
+#video.camera-on{display:block}
+
+@media(max-width:750px){
+.main-area{grid-template-columns:1fr}
+.camera-card{max-width:520px;margin:auto;width:100%}
+.screen{padding:18px}
+.game-screen{padding:12px}
+.camera-box{min-height:250px}
+.answers{gap:9px}
+.answer{min-height:115px;font-size:19px}
+.listen-btn{font-size:18px;padding:13px 24px}
+}
+</style>
+</head>
+<body>
+<div class="game">
+<header><div class="logo">🎧 Listen & Lean! 🌸</div><div class="score">⭐ Score: <span id="score">0</span></div></header>
+
+<div id="introScreen" class="screen">
+<div class="intro-card">
+<div class="emoji" id="roundEmoji">🌸</div>
+<div class="round-number" id="roundNumber">ROUND 1</div>
+<h1 id="roundName">Easy Peasy Listening</h1>
+<p id="roundDescription">Listen carefully, find the information, then lean LEFT or RIGHT to show your answer!</p>
+<div style="font-size:13px;color:#8c7d95;margin:-15px 0 20px">📱 On Android, open this game from an HTTPS webpage for camera access.</div>
+<button class="ready-btn" onclick="startRound()">I'm Ready! 💗</button>
+</div>
+</div>
+
+<div id="gameScreen" class="game-screen">
+<div class="question-top"><div class="round-tag" id="roundTag">🌸 Round 1</div><div class="question-number">Question <span id="questionNumber">1</span>/4</div></div>
+<div class="main-area">
+<div class="camera-card">
+<div class="camera-title">📷 Lean with your answer!</div>
+<div class="camera-box">
+<video id="video" autoplay muted playsinline></video>
+<div class="lean-guide"></div>
+<div id="cameraOverlay" class="camera-overlay">
+  <div class="camera-icon">📷</div>
+  <div class="camera-overlay-title">Camera Ready?</div>
+  <div class="camera-overlay-text">Tap below and allow camera access.</div>
+  <button class="camera-start-btn" onclick="startCamera()">Enable Camera 📸</button>
+</div>
+</div>
+<div class="camera-status" id="cameraStatus">Tap “Enable Camera” to start 📷</div>
+</div>
+<div class="question-card">
+<div class="listen-box"><p>🎧 Listen to the sentence!</p><button id="listenButton" class="listen-btn" onclick="speakSentence()">🔊 Listen</button></div>
+<div class="instruction">When you know the answer...<br>Lean LEFT or RIGHT! 👈 👉</div>
+<div class="answers">
+<div class="answer left-answer"><div class="arrow">👈</div><div id="leftAnswer">Apple</div><small>LEAN LEFT</small></div>
+<div class="answer right-answer"><div class="arrow">👉</div><div id="rightAnswer">Banana</div><small>LEAN RIGHT</small></div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="countdown" class="countdown"><div class="countdown-number" id="countdownNumber">3</div><p>Get ready to lean! 👈 👉</p></div>
+
+<div id="feedback" class="feedback"><div class="feedback-card"><div class="feedback-emoji" id="feedbackEmoji">🎉</div><h2 id="feedbackTitle">Great job!</h2><p id="feedbackText">You leaned the correct way!</p><button class="next-btn" onclick="nextQuestion()">Next ➜</button></div></div>
+
+<div id="finalScreen" class="screen final">
+<div><div class="emoji">🏆</div><h1>Great Listening! 🎧</h1><p>You completed all 3 rounds!</p><div class="final-score"><span id="finalScore">0</span>/12 ⭐</div><button class="restart-btn" onclick="restartGame()">Play Again 🔄</button></div>
+</div>
+</div>
+
+<script>
+const rounds=[
+{name:"Easy Peasy Listening",emoji:"🌸",description:"Listen for simple information. Then lean LEFT or RIGHT!",questions:[
+{sentence:"The cat is sleeping on the sofa.",left:"Cat",right:"Dog",answer:"left"},
+{sentence:"Sarah has a red bag.",left:"Red",right:"Blue",answer:"left"},
+{sentence:"Tom eats an apple for breakfast.",left:"Apple",right:"Orange",answer:"left"},
+{sentence:"The boy goes to school at eight o'clock.",left:"8 o'clock",right:"10 o'clock",answer:"left"}]},
+{name:"Listen & Find 🔎",emoji:"🕵️",description:"Listen for specific details such as people, places and objects.",questions:[
+{sentence:"Mia bought a yellow umbrella at the shop.",left:"Yellow",right:"Green",answer:"left"},
+{sentence:"Daniel plays football every Saturday.",left:"Friday",right:"Saturday",answer:"right"},
+{sentence:"The family travelled to Penang by bus.",left:"Bus",right:"Train",answer:"left"},
+{sentence:"Aisha's birthday is in December.",left:"June",right:"December",answer:"right"}]},
+{name:"Super Listening Challenge ⭐",emoji:"🌟",description:"The sentences are longer. Listen carefully for the important detail!",questions:[
+{sentence:"Although Amir wanted chocolate ice cream, he chose vanilla.",left:"Chocolate",right:"Vanilla",answer:"right"},
+{sentence:"Lina usually walks to school, but today her father drives her.",left:"Walks",right:"Drives",answer:"right"},
+{sentence:"The blue notebook belongs to Sara, not her brother Adam.",left:"Sara",right:"Adam",answer:"left"},
+{sentence:"The teacher said the test would be on Thursday, not Tuesday.",left:"Tuesday",right:"Thursday",answer:"right"}]}];
+
+let currentRound=0,currentQuestion=0,score=0,currentCorrectAnswer=null,cameraStarted=false,detecting=false,lastLean=null,stableSince=0;
+let currentStream=null;
+const introScreen=document.getElementById("introScreen"),gameScreen=document.getElementById("gameScreen"),finalScreen=document.getElementById("finalScreen");
+const roundNumber=document.getElementById("roundNumber"),roundName=document.getElementById("roundName"),roundEmoji=document.getElementById("roundEmoji"),roundDescription=document.getElementById("roundDescription");
+const roundTag=document.getElementById("roundTag"),questionNumber=document.getElementById("questionNumber"),leftAnswer=document.getElementById("leftAnswer"),rightAnswer=document.getElementById("rightAnswer"),scoreDisplay=document.getElementById("score"),video=document.getElementById("video"),cameraStatus=document.getElementById("cameraStatus"),countdown=document.getElementById("countdown"),countdownNumber=document.getElementById("countdownNumber"),feedback=document.getElementById("feedback"),feedbackEmoji=document.getElementById("feedbackEmoji"),feedbackTitle=document.getElementById("feedbackTitle"),feedbackText=document.getElementById("feedbackText");
+
+function showRoundIntro(){const r=rounds[currentRound];introScreen.style.display="flex";gameScreen.style.display="none";finalScreen.style.display="none";roundNumber.textContent=`ROUND ${currentRound+1}`;roundName.textContent=r.name;roundEmoji.textContent=r.emoji;roundDescription.textContent=r.description}
+function startRound(){introScreen.style.display="none";gameScreen.style.display="block";currentQuestion=0;if(!cameraStarted)startCamera();loadQuestion()}
+function loadQuestion(){const q=rounds[currentRound].questions[currentQuestion];roundTag.textContent=`${rounds[currentRound].emoji} Round ${currentRound+1}`;questionNumber.textContent=currentQuestion+1;leftAnswer.textContent=q.left;rightAnswer.textContent=q.right;currentCorrectAnswer=q.answer;detecting=false;lastLean=null;cameraStatus.textContent="Listen first 🔊";cameraStatus.className="camera-status"}
+function speakSentence(){const q=rounds[currentRound].questions[currentQuestion];speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(q.sentence);u.lang="en-US";u.rate=.82;u.pitch=1.05;const b=document.getElementById("listenButton");b.textContent="🔊 Speaking...";b.classList.add("active");u.onend=()=>{b.textContent="🔊 Listen Again";b.classList.remove("active");startCountdown()};speechSynthesis.speak(u)}
+function startCountdown(){countdown.style.display="flex";let n=3;countdownNumber.textContent=n;const t=setInterval(()=>{n--;if(n<=0){clearInterval(t);countdown.style.display="none";beginLeanDetection()}else countdownNumber.textContent=n},800)}
+function beginLeanDetection(){detecting=true;lastLean=null;stableSince=0;cameraStatus.textContent="Lean LEFT or RIGHT! 👈 👉"}
+async function startCamera(){
+if(cameraStarted)return;
+
+const overlay=document.getElementById("cameraOverlay");
+
+if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+cameraStatus.innerHTML="⚠️ Camera needs HTTPS. Open this game from an HTTPS website.";
+return;
+}
+
+try{
+cameraStatus.textContent="Requesting camera permission... 📷";
+
+const constraints={
+audio:false,
+video:{
+facingMode:{ideal:"user"},
+width:{ideal:640},
+height:{ideal:480}
+}
+};
+
+const stream=await navigator.mediaDevices.getUserMedia(constraints);
+
+currentStream=stream;
+video.srcObject=stream;
+video.classList.add("camera-on");
+await video.play();
+
+cameraStarted=true;
+overlay.classList.add("hidden");
+cameraStatus.textContent="Camera ready! Lean LEFT or RIGHT 👈 👉";
+
+setupPoseDetection();
+
+}catch(e){
+console.error("Camera error:",e);
+
+if(e.name==="NotAllowedError" || e.name==="PermissionDeniedError"){
+cameraStatus.innerHTML="🔒 Camera permission was blocked. Tap the 🔒 icon in your browser address bar and allow Camera, then reload.";
+}else if(e.name==="NotFoundError"){
+cameraStatus.textContent="📷 No camera was found on this device.";
+}else if(e.name==="NotReadableError"){
+cameraStatus.textContent="📷 Camera is being used by another app. Close it and try again.";
+}else{
+cameraStatus.innerHTML="⚠️ Camera could not start. Make sure this page is opened using HTTPS.";
+}
+}
+}
+let pose;
+function setupPoseDetection(){pose=new Pose({locateFile:file=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});pose.setOptions({modelComplexity:1,smoothLandmarks:true,enableSegmentation:false,minDetectionConfidence:.55,minTrackingConfidence:.55});pose.onResults(onPoseResults);const cam=new Camera(video,{
+onFrame:async()=>{
+if(pose && video.readyState>=2) await pose.send({image:video})
+},
+width:640,
+height:480
+});
+cam.start();}
+function onPoseResults(results){if(!detecting||!results.poseLandmarks)return;const l=results.poseLandmarks,n=l[0],ls=l[11],rs=l[12],lh=l[23],rh=l[24];if([n,ls,rs,lh,rh].some(x=>x.visibility<.5))return;const shoulderX=(ls.x+rs.x)/2,hipX=(lh.x+rh.x)/2,torsoX=(shoulderX+hipX)/2,d=n.x-torsoX,threshold=.055;let lean=null;if(d< -threshold)lean="right";else if(d>threshold)lean="left";if(lean){cameraStatus.innerHTML=lean==="left"?"👈 LEANING LEFT!":"👉 LEANING RIGHT!";cameraStatus.className="camera-status "+(lean==="left"?"lean-left":"lean-right");if(lean!==lastLean){lastLean=lean;stableSince=Date.now()}else if(Date.now()-stableSince>700)registerAnswer(lean)}else{lastLean=null;cameraStatus.textContent="Lean LEFT or RIGHT! 👈 👉";cameraStatus.className="camera-status"}}
+function registerAnswer(direction){if(!detecting)return;detecting=false;const correct=direction===currentCorrectAnswer;if(correct){score++;scoreDisplay.textContent=score;feedbackEmoji.textContent="🎉";feedbackTitle.textContent="Amazing!";feedbackText.textContent="You leaned the correct way! ⭐"}else{feedbackEmoji.textContent="🌱";feedbackTitle.textContent="Good Try!";feedbackText.textContent="Listen carefully and try the next one!"}feedback.style.display="flex"}
+function nextQuestion(){feedback.style.display="none";currentQuestion++;if(currentQuestion<rounds[currentRound].questions.length){loadQuestion();return}currentRound++;if(currentRound<rounds.length)showRoundIntro();else showFinalScreen()}
+function showFinalScreen(){gameScreen.style.display="none";introScreen.style.display="none";finalScreen.style.display="flex";document.getElementById("finalScore").textContent=score}
+function restartGame(){currentRound=0;currentQuestion=0;score=0;scoreDisplay.textContent="0";showRoundIntro()}
+showRoundIntro();
+</script>
+</body>
+</html>
