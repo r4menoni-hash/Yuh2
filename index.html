@@ -49,6 +49,26 @@ background:linear-gradient(135deg,#ed91bd,#c987e8);color:white;
 padding:12px 22px;border-radius:30px;font-size:17px
 }
 .camera-overlay.hidden{display:none}
+
+.answer.correct-answer{
+  border:3px solid #72c58b !important;
+  background:#eaffef !important;
+}
+.answer.wrong-answer{
+  border:3px solid #ee8b9e !important;
+}
+.answer.selected{
+  transform:scale(1.03);
+}
+.feedback{
+  min-height:34px;
+  margin:12px 0;
+  font-size:20px;
+  font-weight:800;
+}
+.feedback.correct{color:#3b9b61}
+.feedback.wrong{color:#d75b72}
+
 #video.camera-on{display:block}
 
 @media(max-width:750px){
